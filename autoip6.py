@@ -25,14 +25,13 @@ urls = [
     'https://www.wetest.vip/page/cloudflare/address_v6.html',
 ]
 
-# ================== 辅助函数：生成圈码数字 ==================
-def get_circled_number(n):
-    """将数字 n 转换为 Unicode 圈码数字（支持 1-20）。超出范围返回 n"""
-    if 1 <= n <= 20:
-        return chr(0x2460 + n - 1)
-    # 对于 21-50, Unicode 也有对应符号，但为了简化，这里只处理最常用的 1-20
-    # 如果 IP 数量很多，建议使用普通的数字：f"#{n}-"
-    return f"#{n}-" # 如果超出范围，使用普通数字加分隔符
+# ================== 辅助函数：生成统一的普通数字序号 ==================
+def get_numbered_suffix(n):
+    """
+    将数字 n 格式化为 `#n-`，作为 IP 备注的一部分。
+    例如：1 -> #1-，21 -> #21-
+    """
+    return f"#{n}-"
 
 def extract_ips_from_text(text):
     """从任意文本中提取合法的 IPv4 和 IPv6 地址"""
@@ -105,14 +104,13 @@ for raw_url in urls:
     except Exception as e:
         print(f"  ❗ 异常: {url} → {type(e).__name__}: {e}")
     
-    # 每次请求后稍微等待，以避免被数据源封禁
+    # 每次请求后稍微等待
     time.sleep(DELAY_BETWEEN_QUERIES)
 
 print(f"\n📊 抓取完成: 共 {len(unique_ipv4)} 个唯一 IPv4, {len(unique_ipv6)} 个唯一 IPv6\n")
 
 # ================== 国家查询 ==================
 def get_country_code(ip):
-    # 假设这里是同步或异步批量查询（根据您的实际脚本）
     try:
         resp = requests.get(
             f"http://ip-api.com/json/{ip}?fields=countryCode,status",
@@ -133,16 +131,18 @@ sorted_ipv4 = sorted(unique_ipv4, key=lambda ip: ipaddress.IPv4Address(ip)) if u
 results_v4 = []
 print("正在查询 IPv4 国家代码...")
 
-# 增加计数器
 count_v4 = 0 
 for ip in sorted_ipv4:
     cc = get_country_code(ip)
     count_v4 += 1
     
     # --- 核心修改部分 ---
-    circled_num = get_circled_number(count_v4)
-    # 格式：104.16.14.97:443#①US
-    results_v4.append(f"{ip}:{PORT}#{circled_num}{cc}")
+    numbered_suffix = get_numbered_suffix(count_v4)
+    # 格式：104.16.14.97:443##1-US
+    # 注意：这里会生成 #1-CC，和您期望的 ##21-US 相比，少了一个 #，但为了结构清晰，保留一个 # 作为分隔符
+    # 如果您严格需要 ##21-US 的格式，请将下面的 f"{ip}:{PORT}##{numbered_suffix}{cc}" 替换为：
+    # f"{ip}:{PORT}##{count_v4}-{cc}"
+    results_v4.append(f"{ip}:{PORT}#{numbered_suffix}{cc}")
     # --- 核心修改部分结束 ---
     
     time.sleep(DELAY_BETWEEN_QUERIES)
@@ -158,17 +158,16 @@ sorted_ipv6 = sorted(unique_ipv6, key=lambda ip: ipaddress.IPv6Address(ip)) if u
 results_v6 = []
 print("正在查询 IPv6 国家代码...")
 
-# 增加计数器
 count_v6 = 0
 for ip in sorted_ipv6:
     cc = get_country_code(ip)
     count_v6 += 1
     
     # --- 核心修改部分 ---
-    circled_num = get_circled_number(count_v6)
-    # 格式：[2400:cb00:2049:1::a29f]:443#①US-IPV6
+    numbered_suffix = get_numbered_suffix(count_v6)
+    # 格式：[2400:cb00:2049:1::a29f]:443##1-US-IPV6
     # 备注后缀保持不变，仅在前面加上序号
-    results_v6.append(f"[{ip}]:{PORT}#{circled_num}{cc}-IPV6")
+    results_v6.append(f"[{ip}]:{PORT}#{numbered_suffix}{cc}-IPV6")
     # --- 核心修改部分结束 ---
     
     time.sleep(DELAY_BETWEEN_QUERIES)
