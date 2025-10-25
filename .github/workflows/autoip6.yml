@@ -2,8 +2,8 @@ name: Collect IPs and Save to Files
 
 on:
   schedule:
-    - cron: '30 * * * *'   # 每小时第30分钟（UTC）
-  workflow_dispatch:       # 允许手动触发
+    - cron: '30 * * * *'  # 每小时第30分钟（UTC）
+  workflow_dispatch:      # 允许手动触发
 
 permissions:
   contents: write          # 用于 git commit & push
@@ -25,11 +25,26 @@ jobs:
 
       - name: Run IP collection script
         run: python autoip6.py
+        # 假设 autoip6.py 会生成 ip.txt 和 ipv6.txt
 
       - name: Commit and push results
         uses: stefanzweifel/git-auto-commit-action@v5
+        id: commit
         with:
           commit_message: "chore: update ip.txt and ipv6.txt [auto]"
           file_pattern: ip.txt ipv6.txt
           commit_user_name: GitHub Action
           commit_user_email: action@github.com
+      
+      # --- 新增步骤：触发 Vercel 部署 ---
+      - name: Trigger Vercel Deployment
+        # 只有在前面的 'Commit and push results' 步骤成功（或跳过）时才执行
+        if: success() || steps.commit.outcome == 'skipped'
+        env:
+          # 从 GitHub Secrets 中安全地获取 Vercel 部署链接
+          VERCEL_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK }}
+        run: |
+          echo "触发 Vercel 部署..."
+          # 使用 curl 命令向 Vercel 部署链接发起 POST 请求
+          curl -X POST $VERCEL_HOOK_URL
+          echo "Vercel 部署请求已发送。"
