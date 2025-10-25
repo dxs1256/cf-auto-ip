@@ -2,7 +2,7 @@ name: Collect IPs and Save to Files
 
 on:
   schedule:
-    - cron: '30 * * * *'  # 每小时第30分钟（UTC）
+    - cron: '0 * * * *'  # 每小时的整点（UTC）运行一次
   workflow_dispatch:      # 允许手动触发
 
 permissions:
