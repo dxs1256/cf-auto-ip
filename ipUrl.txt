@@ -1,1 +1,0 @@
-https://raw.githubusercontent.com/dxs1256/cf-auto-ip/refs/heads/main/ip.txt
